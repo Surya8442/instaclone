@@ -20,4 +20,3 @@ SQLAlchemy==1.4.36
 visitor==0.1.3
 Werkzeug==2.1.2
 WTForms==3.0.1
-greenlet>=2.0.2
