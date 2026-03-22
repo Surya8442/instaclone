@@ -11,7 +11,7 @@ pipeline {
 
         stage('Checkout') {
             steps {
-                git url: 'https://github.com/shivaprabha2997/instagram.git'
+                git branch: 'main', url: 'https://github.com/shivaprabha2997/instagram.git'
             }
         }
 
@@ -24,7 +24,7 @@ pipeline {
         stage('Login to Docker Hub') {
             steps {
                 withCredentials([usernamePassword(
-                    credentialsId: "$Docker_CRED",
+                    credentialsId: "${DOCKER_CREDENTIALS_ID}",
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
@@ -50,7 +50,7 @@ pipeline {
 
         stage('Run Container') {
             steps {
-                sh 'docker run -d -p 5000:8080 --name $CONTAINER_NAME $IMAGE_NAME'
+                sh 'docker run -d -p 5000:5000 --name $CONTAINER_NAME $IMAGE_NAME'
             }
         }
     }
