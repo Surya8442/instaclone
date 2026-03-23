@@ -2,55 +2,87 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = "shivadocker2997/instagram"
-        CONTAINER_NAME = "insta-cont"
-        DOCKER_CREDENTIALS_ID = "Docker_CRED"
+        DOCKER_USER = "surya8442"
+        IMAGE_NAME = "instagram"
+        IMAGE_TAG = "v1"
+        CONTAINER_NAME = "myapp-container"
+        APP_PORT = "3000"
     }
 
     stages {
 
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/shivaprabha2997/instagram.git'
+                git branch: 'main', url: 'https://github.com/Surya8442/twentyone.git'
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Install Dependencies') {
             steps {
-                sh 'docker build -t $IMAGE_NAME .'
+                sh "npm install"
             }
         }
 
-        stage('Login to Docker Hub') {
+        stage('Docker Build') {
+            steps {
+                sh "docker build -t ${DOCKER_USER}/${IMAGE_NAME}:${IMAGE_TAG} ."
+            }
+        }
+
+        stage('Push Image to DockerHub') {
             steps {
                 withCredentials([usernamePassword(
-                    credentialsId: "${DOCKER_CREDENTIALS_ID}",
-                    usernameVariable: 'DOCKER_USER',
-                    passwordVariable: 'DOCKER_PASS'
+                    credentialsId: 'Docker_cred',
+                    usernameVariable: 'USER',
+                    passwordVariable: 'PASS'
                 )]) {
-                    sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
+                    sh '''
+                        echo $PASS | docker login -u $USER --password-stdin
+                        docker push $USER/myapp:v1
+                    '''
                 }
             }
         }
 
-        stage('Push to Docker Hub') {
-            steps {
-                sh 'docker push $IMAGE_NAME'
-            }
-        }
-
-        stage('Stop Old Container') {
+        stage('Run Container (Local Test)') {
             steps {
                 sh '''
-                docker stop $CONTAINER_NAME || true
-                docker rm $CONTAINER_NAME || true
+                    docker rm -f myapp-container || true
+                    docker run -d --name myapp-container -p 3000:3000 surya8442/myapp:v1
                 '''
             }
         }
 
-        stage('Run Container') {
+        stage('Approval') {
             steps {
-                sh 'docker run -d -p 5000:5000 --name $CONTAINER_NAME $IMAGE_NAME'
+                input "Approve deployment to Kubernetes?"
+            }
+        }
+
+        stage('Deploy to Kubernetes') {
+            steps {
+                sh '''
+                    export KUBECONFIG=/var/lib/jenkins/.kube/config
+
+                    kubectl get nodes
+
+                    kubectl apply -f deployment.yml
+                    kubectl apply -f Service.yml
+                '''
+            }
+        }
+
+        stage('Show App URL') {
+            steps {
+                sh '''
+                    export KUBECONFIG=/var/lib/jenkins/.kube/config
+
+                    echo "======================================"
+                    echo "Application deployed successfully 🚀"
+                    echo "======================================"
+
+                    kubectl get svc myapp-service
+                '''
             }
         }
     }
